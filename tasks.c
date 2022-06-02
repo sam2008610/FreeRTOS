@@ -325,6 +325,10 @@ typedef struct tskTaskControlBlock 			/* The old naming convention is used to pr
 	TickType_t xPeriodTime;
 	TickType_t xPeriodCounter;
 } tskTCB;
+typedef struct DUMMYSTRUCT{
+	TaskFunction_t pxTaskCode;
+	void * pvParameters;
+}DummyStruct;
 
 /* The old tskTCB name is maintained above then typedefed to the new TCB_t name
 below to enable the use of older kernel aware debuggers. */
@@ -816,11 +820,11 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 
 		return xReturn;
 	}
-	dummytask(TaskFunction_t pxTaskCode,void * const pvParameters)
+	dummytask(DummyStruct *d)
 	{
 		while(1){
-			pxTaskCode(pvParameters);
-			vTaskSuspend()
+			d->pxTaskCode(d->pvParameters);
+			vTaskSuspend(pxCurrentTCB);
 		}
 	}
 	BaseType_t xTaskCreateTaskPeriod(	TaskFunction_t pxTaskCode,
@@ -830,7 +834,11 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 							TaskHandle_t * const pxCreatedTask, 
 							TickType_t PeriodTime)
 	{
-		xTaskCreate(dummytask, pcName, usStackDepth ,pvParameters, 2,pxCreatedTask,PeriodTime);
+		DummyStruct *newtask;
+		newtask = ( DummyStruct * ) pvPortMalloc( sizeof( DummyStruct ) );
+		newtask->pvParameters=pvParameters;
+		newtask->pxTaskCode=pxTaskCode;
+		xTaskCreate(dummytask, pcName, usStackDepth ,(void*)newtask, 2,pxCreatedTask,PeriodTime);
 	}
 #endif /* configSUPPORT_DYNAMIC_ALLOCATION */
 /*-----------------------------------------------------------*/
