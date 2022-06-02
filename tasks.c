@@ -733,7 +733,8 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 							const configSTACK_DEPTH_TYPE usStackDepth,
 							void * const pvParameters,
 							UBaseType_t uxPriority,
-							TaskHandle_t * const pxCreatedTask )
+							TaskHandle_t * const pxCreatedTask, 
+							TickType_t PeriodTime)
 	{
 	TCB_t *pxNewTCB;
 	BaseType_t xReturn;
@@ -804,7 +805,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 			}
 			#endif /* tskSTATIC_AND_DYNAMIC_ALLOCATION_POSSIBLE */
 
-			prvInitialiseNewTask( pxTaskCode, pcName, ( uint32_t ) usStackDepth, pvParameters, uxPriority, pxCreatedTask, pxNewTCB, NULL );
+			prvInitialiseNewTask( pxTaskCode, pcName, ( uint32_t ) usStackDepth, pvParameters, uxPriority, pxCreatedTask, pxNewTCB, NULL ,PeriodTime);
 			prvAddNewTaskToReadyList( pxNewTCB );
 			xReturn = pdPASS;
 		}
@@ -815,7 +816,22 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 
 		return xReturn;
 	}
-
+	dummytask(TaskFunction_t pxTaskCode,void * const pvParameters)
+	{
+		while(1){
+			pxTaskCode(pvParameters);
+			vTaskSuspend()
+		}
+	}
+	BaseType_t xTaskCreateTaskPeriod(	TaskFunction_t pxTaskCode,
+							const char * const pcName,		/*lint !e971 Unqualified char types are allowed for strings and single characters only. */
+							const configSTACK_DEPTH_TYPE usStackDepth,
+							void * const pvParameters,
+							TaskHandle_t * const pxCreatedTask, 
+							TickType_t PeriodTime)
+	{
+		xTaskCreate(dummytask, pcName, usStackDepth ,pvParameters, 2,pxCreatedTask,PeriodTime);
+	}
 #endif /* configSUPPORT_DYNAMIC_ALLOCATION */
 /*-----------------------------------------------------------*/
 
@@ -826,7 +842,8 @@ static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,
 									UBaseType_t uxPriority,
 									TaskHandle_t * const pxCreatedTask,
 									TCB_t *pxNewTCB,
-									const MemoryRegion_t * const xRegions )
+									const MemoryRegion_t * const xRegions, 
+									TickType_t PeriodTime)
 {
 StackType_t *pxTopOfStack;
 UBaseType_t x;
@@ -929,6 +946,8 @@ UBaseType_t x;
 	}
 
 	pxNewTCB->uxPriority = uxPriority;
+	pxNewTCB->xPeriodTime =PeriodTime;
+	pxNewTCB->xPeriodCounter=0;
 	#if ( configUSE_MUTEXES == 1 )
 	{
 		pxNewTCB->uxBasePriority = uxPriority;
