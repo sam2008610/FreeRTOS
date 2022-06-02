@@ -322,6 +322,8 @@ typedef struct tskTaskControlBlock 			/* The old naming convention is used to pr
 	#if( configUSE_POSIX_ERRNO == 1 )
 		int iTaskErrno;
 	#endif
+	TickType_t xPeriodTime;
+	TickType_t xPeriodCounter;
 } tskTCB;
 
 /* The old tskTCB name is maintained above then typedefed to the new TCB_t name
