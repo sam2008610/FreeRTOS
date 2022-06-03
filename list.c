@@ -29,7 +29,7 @@
 #include <stdlib.h>
 #include "FreeRTOS.h"
 #include "list.h"
-#include "tasks.c"
+
 
 /*-----------------------------------------------------------
  * PUBLIC LIST API documented in list.h

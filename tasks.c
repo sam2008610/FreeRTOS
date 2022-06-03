@@ -557,7 +557,9 @@ static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,
 									UBaseType_t uxPriority,
 									TaskHandle_t * const pxCreatedTask,
 									TCB_t *pxNewTCB,
-									const MemoryRegion_t * const xRegions ) PRIVILEGED_FUNCTION;
+									const MemoryRegion_t * const xRegions ,
+									TickType_t PeriodTime
+									) PRIVILEGED_FUNCTION;
 
 /*
  * Called after a new task has been created and initialised to place the task
@@ -841,6 +843,8 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 		xTaskCreate(dummytask, pcName, usStackDepth ,(void*)newtask, 2,pxCreatedTask,PeriodTime);
 	}
 #endif /* configSUPPORT_DYNAMIC_ALLOCATION */
+
+
 /*-----------------------------------------------------------*/
 
 static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,
@@ -2031,7 +2035,9 @@ BaseType_t xReturn;
 								configMINIMAL_STACK_SIZE,
 								( void * ) NULL,
 								portPRIVILEGE_BIT, /* In effect ( tskIDLE_PRIORITY | portPRIVILEGE_BIT ), but tskIDLE_PRIORITY is zero. */
-								&xIdleTaskHandle ); /*lint !e961 MISRA exception, justified as it is not a redundant explicit cast to all supported compilers. */
+								&xIdleTaskHandle ,
+								0
+								); /*lint !e961 MISRA exception, justified as it is not a redundant explicit cast to all supported compilers. */
 	}
 	#endif /* configSUPPORT_STATIC_ALLOCATION */
 
@@ -2858,29 +2864,32 @@ BaseType_t xSwitchRequired = pdFALSE;
 	}
 	#endif /* configUSE_PREEMPTION */
 
-	ListItem_t *pxIterator;
-	List_t * pxList;
-	pxList=&( pxReadyTasksLists[2] );
-	// ready list traverse
-	for( pxIterator = ( ListItem_t * ) &( pxList->xListEnd.pxNext); pxIterator!=( ListItem_t * ) &(pxList->xListEnd); pxIterator = pxIterator->pxNext ) /*lint !e826 !e740 !e9087 The mini list structure is used as the list end to save RAM.  This is checked and valid. *//*lint !e440 The iterator moves to a different value, not xValueOfInsertion. */
+	#if ( configUSE_RATEMONOTIC ==1)
 	{
-		((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter+=1;
-		if(((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter>=((tskTCB*)(pxIterator->pvOwner))->xPeriodTime){
-			// miss deadline!!
+		ListItem_t *pxIterator;
+		List_t * pxList;
+		pxList=&( pxReadyTasksLists[2] );
+		// ready list traverse
+		for( pxIterator = ( ListItem_t * ) &( pxList->xListEnd.pxNext); pxIterator!=( ListItem_t * ) &(pxList->xListEnd); pxIterator = pxIterator->pxNext ) /*lint !e826 !e740 !e9087 The mini list structure is used as the list end to save RAM.  This is checked and valid. *//*lint !e440 The iterator moves to a different value, not xValueOfInsertion. */
+		{
+			((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter+=1;
+			if(((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter>=((tskTCB*)(pxIterator->pvOwner))->xPeriodTime){
+				// miss deadline!!
+			}
+		}
+		// suspend list traverse
+		pxList= &xSuspendedTaskList;
+		for( pxIterator = ( ListItem_t * ) &( pxList->xListEnd.pxNext); pxIterator!=( ListItem_t * ) &(pxList->xListEnd); pxIterator = pxIterator->pxNext ) /*lint !e826 !e740 !e9087 The mini list structure is used as the list end to save RAM.  This is checked and valid. *//*lint !e440 The iterator moves to a different value, not xValueOfInsertion. */
+		{
+			((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter+=1;
+			if(((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter>=((tskTCB*)(pxIterator->pvOwner))->xPeriodTime){
+				((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter=0;
+				vTaskResume((tskTCB*)(pxIterator->pvOwner));
+				// success !!
+			}
 		}
 	}
-	// suspend list traverse
-	pxList= &xSuspendedTaskList;
-	for( pxIterator = ( ListItem_t * ) &( pxList->xListEnd.pxNext); pxIterator!=( ListItem_t * ) &(pxList->xListEnd); pxIterator = pxIterator->pxNext ) /*lint !e826 !e740 !e9087 The mini list structure is used as the list end to save RAM.  This is checked and valid. *//*lint !e440 The iterator moves to a different value, not xValueOfInsertion. */
-	{
-		((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter+=1;
-		if(((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter>=((tskTCB*)(pxIterator->pvOwner))->xPeriodTime){
-			((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter=0;
-			vTaskResume((tskTCB*)(pxIterator->pvOwner));
-			// success !!
-		}
-	}
-	
+	#endif
 	return xSwitchRequired;
 }
 /*-----------------------------------------------------------*/
