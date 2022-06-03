@@ -218,7 +218,7 @@ count overflows. */
 #define prvAddTaskToReadyList( pxTCB )																\
 	traceMOVED_TASK_TO_READY_STATE( pxTCB );														\
 	taskRECORD_READY_PRIORITY( ( pxTCB )->uxPriority );												\
-	vListInsertEnd( &( pxReadyTasksLists[ ( pxTCB )->uxPriority ] ), &( ( pxTCB )->xStateListItem ) ); \
+	vListInsertAscent( &( pxReadyTasksLists[ ( pxTCB )->uxPriority ] ), &( ( pxTCB )->xStateListItem ) ); \
 	tracePOST_MOVED_TASK_TO_READY_STATE( pxTCB )
 /*-----------------------------------------------------------*/
 
@@ -2858,6 +2858,29 @@ BaseType_t xSwitchRequired = pdFALSE;
 	}
 	#endif /* configUSE_PREEMPTION */
 
+	ListItem_t *pxIterator;
+	List_t * pxList;
+	pxList=&( pxReadyTasksLists[2] );
+	// ready list traverse
+	for( pxIterator = ( ListItem_t * ) &( pxList->xListEnd.pxNext); pxIterator!=( ListItem_t * ) &(pxList->xListEnd); pxIterator = pxIterator->pxNext ) /*lint !e826 !e740 !e9087 The mini list structure is used as the list end to save RAM.  This is checked and valid. *//*lint !e440 The iterator moves to a different value, not xValueOfInsertion. */
+	{
+		((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter+=1;
+		if(((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter>=((tskTCB*)(pxIterator->pvOwner))->xPeriodTime){
+			// miss deadline!!
+		}
+	}
+	// suspend list traverse
+	pxList= &xSuspendedTaskList;
+	for( pxIterator = ( ListItem_t * ) &( pxList->xListEnd.pxNext); pxIterator!=( ListItem_t * ) &(pxList->xListEnd); pxIterator = pxIterator->pxNext ) /*lint !e826 !e740 !e9087 The mini list structure is used as the list end to save RAM.  This is checked and valid. *//*lint !e440 The iterator moves to a different value, not xValueOfInsertion. */
+	{
+		((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter+=1;
+		if(((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter>=((tskTCB*)(pxIterator->pvOwner))->xPeriodTime){
+			((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter=0;
+			vTaskResume((tskTCB*)(pxIterator->pvOwner));
+			// success !!
+		}
+	}
+	
 	return xSwitchRequired;
 }
 /*-----------------------------------------------------------*/
