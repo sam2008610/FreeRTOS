@@ -333,7 +333,13 @@ is used in assert() statements. */
 							void * const pvParameters,
 							UBaseType_t uxPriority,
 							TaskHandle_t * const pxCreatedTask ,
-							TickType_t PeriodTime) PRIVILEGED_FUNCTION;
+							UBaseType_t PeriodTime) PRIVILEGED_FUNCTION;
+	BaseType_t xTaskCreateTaskPeriod(	TaskFunction_t pxTaskCode,
+							const char * const pcName,		/*lint !e971 Unqualified char types are allowed for strings and single characters only. */
+							const configSTACK_DEPTH_TYPE usStackDepth,
+							void * const pvParameters,
+							TaskHandle_t * const pxCreatedTask, 
+							UBaseType_t PeriodTime);
 #endif
 
 /**
@@ -2411,12 +2417,16 @@ TaskHandle_t pvTaskIncrementMutexHeldCount( void ) PRIVILEGED_FUNCTION;
  * section.
  */
 void vTaskInternalSetTimeOutState( TimeOut_t * const pxTimeOut ) PRIVILEGED_FUNCTION;
-
+/*
+* For Rate-monotonic on FreeRTOS
+*
+*/
+void vListInsertAscent( List_t * const pxList, ListItem_t * const pxNewListItem ) PRIVILEGED_FUNCTION;
 
 #ifdef __cplusplus
 }
 #endif
 #endif /* INC_TASK_H */
 
-
-
+#include "stm32f4xx_hal.h"
+UART_HandleTypeDef huart2; // for USART2

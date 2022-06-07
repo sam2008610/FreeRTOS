@@ -389,7 +389,7 @@ void vListInsert( List_t * const pxList, ListItem_t * const pxNewListItem ) PRIV
  */
 
 
-void vListInsertAscent( List_t * const pxList, ListItem_t * const pxNewListItem ) PRIVILEGED_FUNCTION;
+
 
 
 void vListInsertEnd( List_t * const pxList, ListItem_t * const pxNewListItem ) PRIVILEGED_FUNCTION;

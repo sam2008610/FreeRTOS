@@ -218,9 +218,15 @@ count overflows. */
 #define prvAddTaskToReadyList( pxTCB )																\
 	traceMOVED_TASK_TO_READY_STATE( pxTCB );														\
 	taskRECORD_READY_PRIORITY( ( pxTCB )->uxPriority );												\
-	vListInsertAscent( &( pxReadyTasksLists[ ( pxTCB )->uxPriority ] ), &( ( pxTCB )->xStateListItem ) ); \
+	vListInsertEnd( &( pxReadyTasksLists[ ( pxTCB )->uxPriority ] ), &( ( pxTCB )->xStateListItem ) ); \
 	tracePOST_MOVED_TASK_TO_READY_STATE( pxTCB )
 /*-----------------------------------------------------------*/
+
+#define prvAddTaskToReadyListPeriod( pxTCB )																\
+	traceMOVED_TASK_TO_READY_STATE( pxTCB );														\
+	taskRECORD_READY_PRIORITY( ( pxTCB )->uxPriority );												\
+	vListInsertAscent( &( pxReadyTasksLists[ ( pxTCB )->uxPriority ] ), &( ( pxTCB )->xStateListItem ) ); \
+	tracePOST_MOVED_TASK_TO_READY_STATE( pxTCB )
 
 /*
  * Several functions take an TaskHandle_t parameter that can optionally be NULL,
@@ -558,7 +564,7 @@ static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,
 									TaskHandle_t * const pxCreatedTask,
 									TCB_t *pxNewTCB,
 									const MemoryRegion_t * const xRegions ,
-									TickType_t PeriodTime
+									UBaseType_t PeriodTime
 									) PRIVILEGED_FUNCTION;
 
 /*
@@ -740,7 +746,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 							void * const pvParameters,
 							UBaseType_t uxPriority,
 							TaskHandle_t * const pxCreatedTask, 
-							TickType_t PeriodTime)
+							UBaseType_t PeriodTime)
 	{
 	TCB_t *pxNewTCB;
 	BaseType_t xReturn;
@@ -822,11 +828,11 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 
 		return xReturn;
 	}
-	dummytask(DummyStruct *d)
+	void dummytask(DummyStruct *d)
 	{
 		while(1){
 			d->pxTaskCode(d->pvParameters);
-			vTaskSuspend(pxCurrentTCB);
+			vTaskSuspend(NULL);
 		}
 	}
 	BaseType_t xTaskCreateTaskPeriod(	TaskFunction_t pxTaskCode,
@@ -834,7 +840,7 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 							const configSTACK_DEPTH_TYPE usStackDepth,
 							void * const pvParameters,
 							TaskHandle_t * const pxCreatedTask, 
-							TickType_t PeriodTime)
+							UBaseType_t PeriodTime)
 	{
 		DummyStruct *newtask;
 		newtask = ( DummyStruct * ) pvPortMalloc( sizeof( DummyStruct ) );
@@ -855,7 +861,7 @@ static void prvInitialiseNewTask( 	TaskFunction_t pxTaskCode,
 									TaskHandle_t * const pxCreatedTask,
 									TCB_t *pxNewTCB,
 									const MemoryRegion_t * const xRegions, 
-									TickType_t PeriodTime)
+									UBaseType_t PeriodTime)
 {
 StackType_t *pxTopOfStack;
 UBaseType_t x;
@@ -1158,7 +1164,10 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB )
 		#endif /* configUSE_TRACE_FACILITY */
 		traceTASK_CREATE( pxNewTCB );
 
-		prvAddTaskToReadyList( pxNewTCB );
+		// prvAddTaskToReadyList( pxNewTCB );
+		
+		prvAddTaskToReadyListPeriod( pxNewTCB );
+
 
 		portSETUP_TCB( pxNewTCB );
 	}
@@ -2868,10 +2877,14 @@ BaseType_t xSwitchRequired = pdFALSE;
 	{
 		ListItem_t *pxIterator;
 		List_t * pxList;
+		tskTCB* temp1,*temp2;
 		pxList=&( pxReadyTasksLists[2] );
 		// ready list traverse
-		for( pxIterator = ( ListItem_t * ) &( pxList->xListEnd.pxNext); pxIterator!=( ListItem_t * ) &(pxList->xListEnd); pxIterator = pxIterator->pxNext ) /*lint !e826 !e740 !e9087 The mini list structure is used as the list end to save RAM.  This is checked and valid. *//*lint !e440 The iterator moves to a different value, not xValueOfInsertion. */
+		pxIterator = ( ListItem_t * ) &( pxList->xListEnd);
+		pxIterator = pxIterator->pxNext;
+		for( ; pxIterator!=( ListItem_t * ) &(pxList->xListEnd); pxIterator = pxIterator->pxNext ) /*lint !e826 !e740 !e9087 The mini list structure is used as the list end to save RAM.  This is checked and valid. *//*lint !e440 The iterator moves to a different value, not xValueOfInsertion. */
 		{
+			temp1 = pxIterator->pxNext;
 			((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter+=1;
 			if(((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter>=((tskTCB*)(pxIterator->pvOwner))->xPeriodTime){
 				// miss deadline!!
@@ -2879,13 +2892,45 @@ BaseType_t xSwitchRequired = pdFALSE;
 		}
 		// suspend list traverse
 		pxList= &xSuspendedTaskList;
-		for( pxIterator = ( ListItem_t * ) &( pxList->xListEnd.pxNext); pxIterator!=( ListItem_t * ) &(pxList->xListEnd); pxIterator = pxIterator->pxNext ) /*lint !e826 !e740 !e9087 The mini list structure is used as the list end to save RAM.  This is checked and valid. *//*lint !e440 The iterator moves to a different value, not xValueOfInsertion. */
+		pxIterator = ( ListItem_t * ) &( pxList->xListEnd);
+		pxIterator = pxIterator->pxNext;
+		TCB_t* arr;
+		int TCbcount=0;
+		for( ; pxIterator!=( ListItem_t * ) &(pxList->xListEnd); pxIterator = pxIterator->pxNext ) /*lint !e826 !e740 !e9087 The mini list structure is used as the list end to save RAM.  This is checked and valid. *//*lint !e440 The iterator moves to a different value, not xValueOfInsertion. */
 		{
+			temp2 = (tskTCB*)(pxIterator->pvOwner);
 			((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter+=1;
-			if(((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter>=((tskTCB*)(pxIterator->pvOwner))->xPeriodTime){
+			if( (((tskTCB*)(pxIterator->pvOwner))->xPeriodTime!=0) && (((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter >= ((tskTCB*)(pxIterator->pvOwner))->xPeriodTime)){
 				((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter=0;
-				vTaskResume((tskTCB*)(pxIterator->pvOwner));
+				arr = (tskTCB*)(pxIterator->pvOwner);
+				TCbcount++;
+//				 vTaskResume(((tskTCB*)(pxIterator->pvOwner)));
+//				( void ) uxListRemove(  &( temp2->xStateListItem ) );
+//				prvAddTaskToReadyListPeriod( temp2 );
 				// success !!
+
+			}
+			
+				char MonitorTset[30];
+				// uint32_t a;
+				uint32_t a = ((tskTCB*)(pxIterator->pvOwner))->xPeriodTime;
+				uint32_t i=((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter;
+				char num[15];
+				memset(MonitorTset,'\0',sizeof(MonitorTset));
+				// memset(num,'\0',sizeof(num));
+				// itoa(i,num,10);
+				// strcat(num," ");
+				
+				sprintf(MonitorTset,"%s is %u and  %u \n\r",((tskTCB*)(pxIterator->pvOwner))->pcTaskName,i,a);
+				// HAL_UART_Transmit(&huart2,(uint8_t *)MonitorTset,strlen(MonitorTset),0xffff);
+		}
+		if(TCbcount>0){
+			for(int i=0;i<TCbcount;i++){
+				vTaskResume(arr);
+				char MonitorTset[30];
+				sprintf(MonitorTset,"HELOO ARR");
+				HAL_UART_Transmit(&huart2,(uint8_t *)MonitorTset,strlen(MonitorTset),0xffff);
+				xSwitchRequired = pdTRUE;
 			}
 		}
 	}
@@ -5271,4 +5316,72 @@ when performing module tests). */
 
 #endif
 
+void vListInsertAscent( List_t * const pxList, ListItem_t * const pxNewListItem )
+{
+ListItem_t *pxIterator;
+const TickType_t xValueOfInsertion = ((tskTCB*)(pxNewListItem->pvOwner))->xPeriodTime;
+
+	/* Only effective when configASSERT() is also defined, these tests may catch
+	the list data structures being overwritten in memory.  They will not catch
+	data errors caused by incorrect configuration or use of FreeRTOS. */
+	listTEST_LIST_INTEGRITY( pxList );
+	listTEST_LIST_ITEM_INTEGRITY( pxNewListItem );
+
+	/* Insert the new list item into the list, sorted in xItemValue order.
+
+	If the list already contains a list item with the same item value then the
+	new list item should be placed after it.  This ensures that TCBs which are
+	stored in ready lists (all of which have the same xItemValue value) get a
+	share of the CPU.  However, if the xItemValue is the same as the back marker
+	the iteration loop below will not end.  Therefore the value is checked
+	first, and the algorithm slightly modified if necessary. */
+	if( xValueOfInsertion == portMAX_DELAY )
+	{
+		pxIterator = pxList->xListEnd.pxNext;
+	}
+	else
+	{
+		/* *** NOTE ***********************************************************
+		If you find your application is crashing here then likely causes are
+		listed below.  In addition see https://www.freertos.org/FAQHelp.html for
+		more tips, and ensure configASSERT() is defined!
+		https://www.freertos.org/a00110.html#configASSERT
+
+			1) Stack overflow -
+			   see https://www.freertos.org/Stacks-and-stack-overflow-checking.html
+			2) Incorrect interrupt priority assignment, especially on Cortex-M
+			   parts where numerically high priority values denote low actual
+			   interrupt priorities, which can seem counter intuitive.  See
+			   https://www.freertos.org/RTOS-Cortex-M3-M4.html and the definition
+			   of configMAX_SYSCALL_INTERRUPT_PRIORITY on
+			   https://www.freertos.org/a00110.html
+			3) Calling an API function from within a critical section or when
+			   the scheduler is suspended, or calling an API function that does
+			   not end in "FromISR" from an interrupt.
+			4) Using a queue or semaphore before it has been initialised or
+			   before the scheduler has been started (are interrupts firing
+			   before vTaskStartScheduler() has been called?).
+		**********************************************************************/
+		pxIterator = ( ListItem_t * ) &( pxList->xListEnd );
+		pxIterator = pxIterator->pxNext;
+		if(pxList->uxNumberOfItems>0){
+			for( ; (void*)(pxIterator) !=(void*)(&( pxList->xListEnd )) && ((tskTCB*)(pxIterator->pvOwner))->xPeriodTime <= xValueOfInsertion ; pxIterator = pxIterator->pxNext ) /*lint !e826 !e740 !e9087 The mini list structure is used as the list end to save RAM.  This is checked and valid. *//*lint !e440 The iterator moves to a different value, not xValueOfInsertion. */
+			{
+				/* There is nothing to do here, just iterating to the wanted
+				insertion position. */
+			}
+			pxIterator = pxIterator->pxPrevious;
+		}
+	}
+	pxNewListItem->pxNext = pxIterator->pxNext;
+	pxNewListItem->pxNext->pxPrevious = pxNewListItem;
+	pxNewListItem->pxPrevious = pxIterator;
+	pxIterator->pxNext = pxNewListItem;
+
+	/* Remember which list the item is in.  This allows fast removal of the
+	item later. */
+	pxNewListItem->pxContainer = pxList;
+
+	( pxList->uxNumberOfItems )++;
+}
 
