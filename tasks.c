@@ -832,6 +832,11 @@ static void prvAddNewTaskToReadyList( TCB_t *pxNewTCB ) PRIVILEGED_FUNCTION;
 	{
 		while(1){
 			d->pxTaskCode(d->pvParameters);
+			char MonitorTset[30];
+			memset(MonitorTset,'\0',sizeof(MonitorTset));
+			sprintf(MonitorTset,"%s is End \n\r",pxCurrentTCB->pcTaskName);
+			HAL_UART_Transmit(&huart2,(uint8_t *)MonitorTset,strlen(MonitorTset),0xffff);
+			vPrintTick();
 			vTaskSuspend(NULL);
 		}
 	}
@@ -2888,13 +2893,18 @@ BaseType_t xSwitchRequired = pdFALSE;
 			((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter+=1;
 			if(((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter>=((tskTCB*)(pxIterator->pvOwner))->xPeriodTime){
 				// miss deadline!!
+				// char MonitorTset[30];
+				// sprintf(MonitorTset,"MISS DEADLINE \n\r");
+				// HAL_UART_Transmit(&huart2,(uint8_t *)MonitorTset,strlen(MonitorTset),0xffff);
+				// temp1->xPeriodTime = 0;
+				
 			}
 		}
 		// suspend list traverse
 		pxList= &xSuspendedTaskList;
 		pxIterator = ( ListItem_t * ) &( pxList->xListEnd);
 		pxIterator = pxIterator->pxNext;
-		TCB_t* arr;
+		TCB_t* arr[5];
 		int TCbcount=0;
 		for( ; pxIterator!=( ListItem_t * ) &(pxList->xListEnd); pxIterator = pxIterator->pxNext ) /*lint !e826 !e740 !e9087 The mini list structure is used as the list end to save RAM.  This is checked and valid. *//*lint !e440 The iterator moves to a different value, not xValueOfInsertion. */
 		{
@@ -2902,7 +2912,7 @@ BaseType_t xSwitchRequired = pdFALSE;
 			((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter+=1;
 			if( (((tskTCB*)(pxIterator->pvOwner))->xPeriodTime!=0) && (((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter >= ((tskTCB*)(pxIterator->pvOwner))->xPeriodTime)){
 				((tskTCB*)(pxIterator->pvOwner))->xPeriodCounter=0;
-				arr = (tskTCB*)(pxIterator->pvOwner);
+				arr[TCbcount] = (tskTCB*)(pxIterator->pvOwner);
 				TCbcount++;
 //				 vTaskResume(((tskTCB*)(pxIterator->pvOwner)));
 //				( void ) uxListRemove(  &( temp2->xStateListItem ) );
@@ -2926,10 +2936,13 @@ BaseType_t xSwitchRequired = pdFALSE;
 		}
 		if(TCbcount>0){
 			for(int i=0;i<TCbcount;i++){
-				vTaskResume(arr);
+				// vTaskResume(arr);
 				char MonitorTset[30];
-				sprintf(MonitorTset,"HELOO ARR");
+				memset(MonitorTset,'\0',sizeof(MonitorTset));
+				sprintf(MonitorTset,"%s is arrival \n\r",arr[i]->pcTaskName);
 				HAL_UART_Transmit(&huart2,(uint8_t *)MonitorTset,strlen(MonitorTset),0xffff);
+				vPrintTick();
+				xTaskResumeFromISR(arr[i]);
 				xSwitchRequired = pdTRUE;
 			}
 		}
@@ -5385,3 +5398,10 @@ const TickType_t xValueOfInsertion = ((tskTCB*)(pxNewListItem->pvOwner))->xPerio
 	( pxList->uxNumberOfItems )++;
 }
 
+void vPrintTick(){
+	char MonitorTset[30];
+	int tempTick = xTickCount;
+	memset(MonitorTset,'\0',sizeof(MonitorTset));
+	sprintf(MonitorTset,"The tick is %d\n\r",tempTick);
+	HAL_UART_Transmit(&huart2,(uint8_t *)MonitorTset,strlen(MonitorTset),0xffff);
+}
