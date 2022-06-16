@@ -1,4 +1,6 @@
 # EOS-Final 
+- 2022 embedded operating systems final project
+- 學生: 黃品程、曾柏翔
 ## Rate-monotonic on FreeRTOS​
 - Implement Rate-monotonic scheduling on FreeRTOS
 - Static priority and preemptive
