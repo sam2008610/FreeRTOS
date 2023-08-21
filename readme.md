@@ -5,7 +5,7 @@
 - Implement Rate-monotonic scheduling policy on FreeRTOS
 - Static priority and preemptive
 - Tasks can execute periodically
-- If the task miss deadline, it will be terminated
+- If the task misses deadline, it will be terminated
 ## API
 
 ```c
