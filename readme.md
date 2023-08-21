@@ -2,10 +2,10 @@
 - 2022 embedded operating systems final project
 - 學生: 黃品程、曾柏翔
 ## Rate-monotonic on FreeRTOS​
-- Implement Rate-monotonic scheduling on FreeRTOS
+- Implement Rate-monotonic scheduling policy on FreeRTOS
 - Static priority and preemptive
-- Task can execute periodically
-- If the task times out, it will be terminated
+- Tasks can execute periodically
+- If the task miss deadline, it will be terminated
 ## API
 
 ```c
