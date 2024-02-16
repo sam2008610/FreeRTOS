@@ -1,4 +1,5 @@
 # EOS-Final 
+This repository contains an extension of FreeRTOS, a popular real-time operating system for embedded devices, with support for Rate Monotonic Scheduling (RMS). RMS is a fixed-priority algorithm where the priority is determined based on the task's period; the shorter the period, the higher the priority. This scheduling policy is optimal for a set of periodic tasks.
 - 2022 embedded operating systems final project
 - 學生: 黃品程、曾柏翔
 ## Rate-monotonic on FreeRTOS​
